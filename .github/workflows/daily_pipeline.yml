@@ -45,7 +45,11 @@ jobs:
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: |
-          python scripts/write_to_sheets.py
+          if [ -f data/events.json ]; then
+            python scripts/write_to_sheets.py
+          else
+            echo "events.json not found, skipping Google Sheets update"
+          fi
 
       - name: Commit Updated JSON Files
         env:
@@ -57,7 +61,12 @@ jobs:
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
 
           git add data/raw_articles.json
-          git add data/events.json
+
+          if [ -f data/events.json ]; then
+            git add data/events.json
+          else
+            echo "events.json not found, skipping commit for events.json"
+          fi
 
           if git diff --staged --quiet; then
             echo "No changes to commit"
