@@ -35,7 +35,7 @@ FEEDS = [
 # Settings
 # -----------------------------
 
-LOOKBACK_HOURS = 720
+LOOKBACK_HOURS = 720  # kept for future use, currently not enforced
 
 
 # -----------------------------
@@ -93,7 +93,6 @@ def deduplicate_articles(articles):
 # -----------------------------
 
 def fetch_latest_articles():
-    cutoff_time = datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)
     collected_articles = []
 
     for feed_source in FEEDS:
@@ -103,37 +102,20 @@ def fetch_latest_articles():
             feed = feedparser.parse(feed_source["url"])
 
             for entry in feed.entries:
-                published = None
-
-                if hasattr(entry, "published_parsed") and entry.published_parsed:
-                    published = datetime(
-                        *entry.published_parsed[:6],
-                        tzinfo=timezone.utc
-                    )
-
-                elif hasattr(entry, "updated_parsed") and entry.updated_parsed:
-                    published = datetime(
-                        *entry.updated_parsed[:6],
-                        tzinfo=timezone.utc
-                    )
-
-                if not published:
-                    continue
-
-                if published < cutoff_time:
-                    continue
+                print(f"Found article → {getattr(entry, 'title', 'No Title')}")
 
                 article = {
-                    "id": getattr(entry, "id", entry.link),
+                    "id": getattr(entry, "id", getattr(entry, "link", "")),
                     "title": getattr(entry, "title", "").strip(),
                     "link": getattr(entry, "link", "").strip(),
                     "summary": getattr(entry, "summary", "").strip()[:1000],
                     "source": feed_source["name"],
-                    "published": published.isoformat(),
+                    "published": getattr(entry, "published", ""),
                     "fetched_at": datetime.now(timezone.utc).isoformat()
                 }
 
-                collected_articles.append(article)
+                if article["title"] and article["link"]:
+                    collected_articles.append(article)
 
         except Exception as error:
             print(f"Error fetching {feed_source['name']} → {error}")
@@ -163,12 +145,8 @@ if __name__ == "__main__":
     merged_articles = existing_articles + fresh_articles
     merged_articles = deduplicate_articles(merged_articles)
 
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
-
-    cleaned_articles = [
-        article for article in merged_articles
-        if datetime.fromisoformat(article["fetched_at"]) > cutoff
-    ]
+    # Keep only latest 500 records for safety
+    cleaned_articles = merged_articles[-500:]
 
     save_articles(cleaned_articles)
 
