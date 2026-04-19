@@ -27,13 +27,13 @@ jobs:
       - name: Run RSS Fetch Script
         run: python scripts/fetch_rss.py
 
-      - name: Commit Updated Data
+      - name: Commit Updated Raw Articles
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
           git add data/raw_articles.json
 
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auto update RSS data"
+          git commit -m "Auto update RSS data" || echo "No changes to commit"
 
           git push
