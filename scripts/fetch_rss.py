@@ -1,22 +1,10 @@
 import feedparser
+import requests
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-print("RUNNING NEW FETCH_RSS VERSION V3")
-
-# =====================================================
-# Shopify Intelligence Engine
-# File: scripts/fetch_rss.py
-# Purpose:
-# Fetch latest RSS updates
-# Remove duplicates
-# Save fresh articles into data/raw_articles.json
-# =====================================================
-
-# -----------------------------
-# Reliable RSS Feed Sources
-# -----------------------------
+print("RUNNING FETCH_RSS VERSION V4")
 
 FEEDS = [
     {
@@ -29,106 +17,97 @@ FEEDS = [
     }
 ]
 
-# -----------------------------
-# Save Articles
-# -----------------------------
 
 def save_articles(articles):
     Path("data").mkdir(exist_ok=True)
 
-    path = Path("data/raw_articles.json")
+    with open("data/raw_articles.json", "w", encoding="utf-8") as f:
+        json.dump(articles, f, indent=2, ensure_ascii=False)
 
-    with open(path, "w", encoding="utf-8") as file:
-        json.dump(articles, file, indent=2, ensure_ascii=False)
+    print(f"Saved {len(articles)} articles")
 
-    print(f"Saved {len(articles)} total articles → {path}")
-
-
-# -----------------------------
-# Deduplicate Articles
-# -----------------------------
 
 def deduplicate_articles(articles):
-    seen_titles = set()
-    seen_links = set()
-    unique_articles = []
+    seen = set()
+    unique = []
 
     for article in articles:
-        title_key = article.get("title", "").strip().lower()
-        link_key = article.get("link", "").split("?")[0].strip().lower()
+        key = (
+            article.get("title", "").strip().lower(),
+            article.get("link", "").strip().lower()
+        )
 
-        if not title_key or not link_key:
-            continue
+        if key not in seen and key[0] and key[1]:
+            seen.add(key)
+            unique.append(article)
 
-        if title_key not in seen_titles and link_key not in seen_links:
-            seen_titles.add(title_key)
-            seen_links.add(link_key)
-            unique_articles.append(article)
+    return unique
 
-    return unique_articles
-
-
-# -----------------------------
-# Fetch Latest Articles
-# -----------------------------
 
 def fetch_latest_articles():
     collected_articles = []
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
     for feed_source in FEEDS:
         print(f"\nFetching → {feed_source['name']}")
 
         try:
-            feed = feedparser.parse(feed_source["url"])
+            response = requests.get(
+                feed_source["url"],
+                headers=headers,
+                timeout=30
+            )
+
+            print(f"HTTP Status → {response.status_code}")
+
+            if response.status_code != 200:
+                print("Skipping due to bad response")
+                continue
+
+            feed = feedparser.parse(response.text)
 
             print(f"Entries found → {len(feed.entries)}")
-
-            if not feed.entries:
-                print(f"No entries found for {feed_source['name']}")
-                continue
 
             for entry in feed.entries:
                 title = getattr(entry, "title", "").strip()
                 link = getattr(entry, "link", "").strip()
 
-                print(f"Found article → {title}")
+                print(f"Found → {title}")
+
+                if not title or not link:
+                    continue
 
                 article = {
                     "id": getattr(entry, "id", link),
                     "title": title,
                     "link": link,
-                    "summary": getattr(entry, "summary", "").strip()[:1000],
+                    "summary": getattr(entry, "summary", "")[:1000],
                     "source": feed_source["name"],
                     "published": getattr(entry, "published", ""),
                     "fetched_at": datetime.now(timezone.utc).isoformat()
                 }
 
-                if title and link:
-                    collected_articles.append(article)
+                collected_articles.append(article)
 
-        except Exception as error:
-            print(f"Error fetching {feed_source['name']} → {error}")
+        except Exception as e:
+            print(f"Error → {str(e)}")
 
     return collected_articles
 
 
-# -----------------------------
-# Main Runner
-# -----------------------------
-
 if __name__ == "__main__":
     print("Starting RSS fetch...")
 
-    # Direct fresh fetch only (no old-state filtering)
     latest_articles = fetch_latest_articles()
 
-    print(f"\nNew articles found → {len(latest_articles)}")
+    print(f"\nRaw articles fetched → {len(latest_articles)}")
 
-    # Deduplicate only current fetch
     cleaned_articles = deduplicate_articles(latest_articles)
 
-    # Keep latest 500 max
-    cleaned_articles = cleaned_articles[-500:]
+    print(f"After dedupe → {len(cleaned_articles)}")
 
     save_articles(cleaned_articles)
 
