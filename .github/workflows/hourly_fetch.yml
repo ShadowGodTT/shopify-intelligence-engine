@@ -27,12 +27,22 @@ jobs:
       - name: Run RSS Fetch Script
         run: python scripts/fetch_rss.py
 
+      - name: Debug Files
+        run: |
+          echo "Listing data folder:"
+          ls -la data
+          echo "Git status before add:"
+          git status
+
       - name: Commit Updated Raw Articles
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          git add data/raw_articles.json
+          git add -A
+
+          echo "Git status after add:"
+          git status
 
           git commit -m "Auto update RSS data" || echo "No changes to commit"
 
