@@ -3,6 +3,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+print("RUNNING NEW FETCH_RSS VERSION V3")
+
 # =====================================================
 # Shopify Intelligence Engine
 # File: scripts/fetch_rss.py
@@ -22,35 +24,10 @@ FEEDS = [
         "url": "https://shopify.dev/changelog/feed"
     },
     {
-        "name": "Shopify Editions",
-        "url": "https://www.shopify.com/editions.atom"
-    },
-    {
         "name": "Ad Hoc News Test Feed",
         "url": "https://www.ad-hoc-news.de/rss/nachrichten.xml"
     }
 ]
-
-# -----------------------------
-# Settings
-# -----------------------------
-
-LOOKBACK_HOURS = 720  # currently not enforced
-
-
-# -----------------------------
-# Load Existing Articles
-# -----------------------------
-
-def load_existing_articles():
-    path = Path("data/raw_articles.json")
-
-    if path.exists():
-        with open(path, "r", encoding="utf-8") as file:
-            return json.load(file)
-
-    return []
-
 
 # -----------------------------
 # Save Articles
@@ -77,8 +54,11 @@ def deduplicate_articles(articles):
     unique_articles = []
 
     for article in articles:
-        title_key = article["title"].strip().lower()
-        link_key = article["link"].split("?")[0].strip().lower()
+        title_key = article.get("title", "").strip().lower()
+        link_key = article.get("link", "").split("?")[0].strip().lower()
+
+        if not title_key or not link_key:
+            continue
 
         if title_key not in seen_titles and link_key not in seen_links:
             seen_titles.add(title_key)
@@ -108,19 +88,22 @@ def fetch_latest_articles():
                 continue
 
             for entry in feed.entries:
-                print(f"Found article → {getattr(entry, 'title', 'No Title')}")
+                title = getattr(entry, "title", "").strip()
+                link = getattr(entry, "link", "").strip()
+
+                print(f"Found article → {title}")
 
                 article = {
-                    "id": getattr(entry, "id", getattr(entry, "link", "")),
-                    "title": getattr(entry, "title", "").strip(),
-                    "link": getattr(entry, "link", "").strip(),
+                    "id": getattr(entry, "id", link),
+                    "title": title,
+                    "link": link,
                     "summary": getattr(entry, "summary", "").strip()[:1000],
                     "source": feed_source["name"],
                     "published": getattr(entry, "published", ""),
                     "fetched_at": datetime.now(timezone.utc).isoformat()
                 }
 
-                if article["title"] and article["link"]:
+                if title and link:
                     collected_articles.append(article)
 
         except Exception as error:
@@ -136,23 +119,16 @@ def fetch_latest_articles():
 if __name__ == "__main__":
     print("Starting RSS fetch...")
 
-    existing_articles = load_existing_articles()
-    existing_ids = {article.get("id", "") for article in existing_articles}
-
+    # Direct fresh fetch only (no old-state filtering)
     latest_articles = fetch_latest_articles()
 
-    fresh_articles = [
-        article for article in latest_articles
-        if article["id"] not in existing_ids
-    ]
+    print(f"\nNew articles found → {len(latest_articles)}")
 
-    print(f"\nNew articles found → {len(fresh_articles)}")
+    # Deduplicate only current fetch
+    cleaned_articles = deduplicate_articles(latest_articles)
 
-    merged_articles = existing_articles + fresh_articles
-    merged_articles = deduplicate_articles(merged_articles)
-
-    # Keep latest 500 records only
-    cleaned_articles = merged_articles[-500:]
+    # Keep latest 500 max
+    cleaned_articles = cleaned_articles[-500:]
 
     save_articles(cleaned_articles)
 
