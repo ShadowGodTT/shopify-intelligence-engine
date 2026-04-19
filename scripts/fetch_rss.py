@@ -13,15 +13,7 @@ from pathlib import Path
 # =====================================================
 
 # -----------------------------
-# RSS Feed Sources
-# -----------------------------
-# Replace the full FEEDS section inside:
-# scripts/fetch_rss.py
-#
-# This includes:
-# - Shopify Developer feed
-# - Shopify Editions feed
-# - Ad Hoc News feed (temporary testing feed)
+# Reliable RSS Feed Sources
 # -----------------------------
 
 FEEDS = [
