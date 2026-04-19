@@ -2,4 +2,5 @@ feedparser
 requests
 gspread
 oauth2client
-pandas
+python-dotenv
+groq
