@@ -1,6 +1,6 @@
 import feedparser
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 # =====================================================
@@ -13,21 +13,17 @@ from pathlib import Path
 # =====================================================
 
 # -----------------------------
-# RSS Feed Sources
+# Reliable RSS Feed Sources
 # -----------------------------
 
 FEEDS = [
     {
-        "name": "Shopify Blog",
-        "url": "https://www.shopify.com/blog.atom"
-    },
-    {
-        "name": "Shopify Changelog",
+        "name": "Shopify Developer Changelog",
         "url": "https://shopify.dev/changelog/feed"
     },
     {
-        "name": "Shopify Developer Updates",
-        "url": "https://shopify.dev/changelog/feed"
+        "name": "Shopify Editions",
+        "url": "https://www.shopify.com/editions.atom"
     }
 ]
 
@@ -96,10 +92,16 @@ def fetch_latest_articles():
     collected_articles = []
 
     for feed_source in FEEDS:
-        print(f"Fetching → {feed_source['name']}")
+        print(f"\nFetching → {feed_source['name']}")
 
         try:
             feed = feedparser.parse(feed_source["url"])
+
+            print(f"Entries found → {len(feed.entries)}")
+
+            if not feed.entries:
+                print(f"No entries found for {feed_source['name']}")
+                continue
 
             for entry in feed.entries:
                 print(f"Found article → {getattr(entry, 'title', 'No Title')}")
@@ -131,7 +133,7 @@ if __name__ == "__main__":
     print("Starting RSS fetch...")
 
     existing_articles = load_existing_articles()
-    existing_ids = {article["id"] for article in existing_articles}
+    existing_ids = {article.get("id", "") for article in existing_articles}
 
     latest_articles = fetch_latest_articles()
 
@@ -140,7 +142,7 @@ if __name__ == "__main__":
         if article["id"] not in existing_ids
     ]
 
-    print(f"New articles found → {len(fresh_articles)}")
+    print(f"\nNew articles found → {len(fresh_articles)}")
 
     merged_articles = existing_articles + fresh_articles
     merged_articles = deduplicate_articles(merged_articles)
