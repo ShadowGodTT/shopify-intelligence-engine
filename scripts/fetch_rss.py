@@ -7,13 +7,21 @@ from pathlib import Path
 # Shopify Intelligence Engine
 # File: scripts/fetch_rss.py
 # Purpose:
-# Fetch latest Shopify RSS updates
+# Fetch latest RSS updates
 # Remove duplicates
 # Save fresh articles into data/raw_articles.json
 # =====================================================
 
 # -----------------------------
-# Reliable RSS Feed Sources
+# RSS Feed Sources
+# -----------------------------
+# Replace the full FEEDS section inside:
+# scripts/fetch_rss.py
+#
+# This includes:
+# - Shopify Developer feed
+# - Shopify Editions feed
+# - Ad Hoc News feed (temporary testing feed)
 # -----------------------------
 
 FEEDS = [
@@ -24,6 +32,10 @@ FEEDS = [
     {
         "name": "Shopify Editions",
         "url": "https://www.shopify.com/editions.atom"
+    },
+    {
+        "name": "Ad Hoc News Test Feed",
+        "url": "https://www.ad-hoc-news.de/rss/nachrichten.xml"
     }
 ]
 
@@ -31,7 +43,7 @@ FEEDS = [
 # Settings
 # -----------------------------
 
-LOOKBACK_HOURS = 720  # kept for future use, currently not enforced
+LOOKBACK_HOURS = 720  # currently not enforced
 
 
 # -----------------------------
@@ -147,7 +159,7 @@ if __name__ == "__main__":
     merged_articles = existing_articles + fresh_articles
     merged_articles = deduplicate_articles(merged_articles)
 
-    # Keep only latest 500 records for safety
+    # Keep latest 500 records only
     cleaned_articles = merged_articles[-500:]
 
     save_articles(cleaned_articles)
