@@ -35,7 +35,7 @@ FEEDS = [
 # Settings
 # -----------------------------
 
-LOOKBACK_HOURS = 48
+LOOKBACK_HOURS = 720
 
 
 # -----------------------------
