@@ -46,4 +46,6 @@ jobs:
 
           git commit -m "Auto update RSS data" || echo "No changes to commit"
 
+          git pull --rebase origin main
+
           git push
